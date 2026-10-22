@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Spike</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 52rem; padding: 0 1rem; color: #1f2933; }
+    form { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+    label { display: flex; flex-direction: column; font-size: .85rem; gap: .25rem; }
+    input { padding: .45rem; font-size: 1rem; }
+    button { grid-column: 1 / -1; padding: .6rem; font-size: 1rem; cursor: pointer; }
+    #message { min-height: 1.4rem; color: #b42318; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .5rem; border-bottom: 1px solid #d0d5dd; }
+  </style>
+</head>
+<body>
+  <h1>Customer Spike</h1>
+
+  <form id="customer-form">
+    <label>Full name * <input name="fullName" required></label>
+    <label>E-mail * <input name="email" type="email" required></label>
+    <label>Phone <input name="phone"></label>
+    <label>Country <input name="country"></label>
+    <button type="submit">Add customer</button>
+  </form>
+  <p id="message" role="alert"></p>
+
+  <table>
+    <thead><tr><th>Name</th><th>E-mail</th><th>Phone</th><th>Country</th><th>Created (UTC)</th></tr></thead>
+    <tbody id="grid"></tbody>
+  </table>
+
+  <script>
+    // Relative URLs (no leading slash) so the page also works when hosted under an IIS sub-application.
+    const api = 'api/customers';
+    const grid = document.getElementById('grid');
+    const message = document.getElementById('message');
+
+    async function load() {
+      const response = await fetch(api);
+      const customers = await response.json();
+      grid.replaceChildren(...customers.map(c => {
+        const row = document.createElement('tr');
+        [c.fullName, c.email, c.phone ?? '', c.country ?? '', new Date(c.createdAt).toISOString()].forEach(value => {
+          const cell = document.createElement('td');
+          cell.textContent = value; // textContent, never innerHTML: avoids XSS from user-entered data
+          row.appendChild(cell);
+        });
+        return row;
+      }));
+    }
+
+    document.getElementById('customer-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      message.textContent = '';
+      const form = event.target;
+      const response = await fetch(api, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form)))
+      });
+
+      if (response.ok) {
+        form.reset();
+        await load();
+      } else {
+        const problem = await response.json();
+        message.textContent = Object.values(problem.errors ?? {}).flat().join(' ') || 'Could not save the customer.';
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
