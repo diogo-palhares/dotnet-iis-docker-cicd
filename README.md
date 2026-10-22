@@ -95,8 +95,8 @@ Best practices applied: `concurrency` cancels superseded runs, least-privilege `
 job timeouts, pinned `global.json` SDK, `TreatWarningsAsErrors`, Dependabot for NuGet / Actions / Docker,
 non-root container user, `.gitignore` / `.dockerignore` / `.gitattributes`.
 
-> After the first successful push, set the package visibility to **public** in GitHub (Packages -> package settings) so
-> `Deploy-Docker.ps1` can pull it anonymously.
+> The image is pulled anonymously by `Deploy-Docker.ps1`. If you fork this repository and the package comes out
+> private, set its visibility to **public** in GitHub (Packages -> package settings).
 
 ## Design notes and trade-offs
 
