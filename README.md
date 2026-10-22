@@ -1,5 +1,7 @@
 # Customer Spike - .NET CI/CD and deployment automation
 
+Repository (with the CI runs, packages and container image): https://github.com/diogo-palhares/dotnet-iis-docker-cicd
+
 Spike of a customer management application plus the build, packaging and deployment tooling around it:
 
 | Component | What it is |
