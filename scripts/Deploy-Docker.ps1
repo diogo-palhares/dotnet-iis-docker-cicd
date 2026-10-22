@@ -26,17 +26,39 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# docker writes progress ("Pulling...", "Unable to find image...") to stderr. In Windows PowerShell 5.1 native stderr
+# becomes a terminating error under $ErrorActionPreference = 'Stop', so the native calls run with 'Continue'
+# and success is decided by the exit code only.
 function Invoke-Docker {
-    & docker @args
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker @args 2>&1 | ForEach-Object { "$_" } | Out-Host
+    }
+    finally {
+        $ErrorActionPreference = $previous
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "'docker $($args -join ' ')' failed with exit code $LASTEXITCODE."
+    }
+}
+
+# Same, but returns stdout (stderr discarded). The caller checks $LASTEXITCODE.
+function Get-DockerOutput {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker @args 2>$null
+    }
+    finally {
+        $ErrorActionPreference = $previous
     }
 }
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw 'Docker CLI not found. Install Docker Desktop (or Docker Engine) first.'
 }
-$null = & docker info --format '{{.ServerVersion}}'
+$null = Get-DockerOutput info --format '{{.ServerVersion}}'
 if ($LASTEXITCODE -ne 0) {
     throw 'The Docker engine is not running. Start Docker Desktop and try again.'
 }
@@ -50,7 +72,7 @@ if ($HelloWorld) {
 Write-Host "==> Pulling $Image" -ForegroundColor Cyan
 Invoke-Docker pull $Image
 
-$existing = & docker ps -a --filter "name=^/$ContainerName$" --format '{{.ID}}'
+$existing = Get-DockerOutput ps -a --filter "name=^/$ContainerName$" --format '{{.ID}}'
 if ($existing) {
     Write-Host "==> Removing the existing container '$ContainerName'" -ForegroundColor Cyan
     Invoke-Docker rm -f $ContainerName
@@ -72,7 +94,7 @@ for ($attempt = 1; $attempt -le 15 -and -not $ok; $attempt++) {
 }
 
 if (-not $ok) {
-    & docker logs --tail 50 $ContainerName
+    Invoke-Docker logs --tail 50 $ContainerName
     throw "Smoke test failed: $url did not return 200."
 }
 
