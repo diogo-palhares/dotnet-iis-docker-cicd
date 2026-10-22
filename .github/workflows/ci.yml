@@ -31,7 +31,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          dotnet-version: 8.0.x
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -109,6 +109,8 @@ jobs:
       packages: write
     env:
       IMAGE: ghcr.io/${{ github.repository }}/web
+      # Do not upload the *.dockerbuild build-record artifacts: they only clutter the run page.
+      DOCKER_BUILD_RECORD_UPLOAD: false
       # Only publish from main and version tags; pull requests just prove the image builds.
       PUSH: ${{ github.event_name != 'pull_request' }}
     steps:

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "1. Web app (http://localhost:5045)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/CustomerSpike.Web/bin/Debug/net8.0/CustomerSpike.Web.dll",
+      "cwd": "${workspaceFolder}/src/CustomerSpike.Web",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5045"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+      },
+      "console": "internalConsole"
+    },
+    {
+      "name": "2. Status monitor, console mode (needs the web app running)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/CustomerSpike.StatusMonitor/bin/Debug/net8.0/CustomerSpike.StatusMonitor.dll",
+      "cwd": "${workspaceFolder}/src/CustomerSpike.StatusMonitor",
+      "env": {
+        "StatusMonitor__Url": "http://localhost:5045/health",
+        "StatusMonitor__IntervalSeconds": "10"
+      },
+      "console": "internalConsole"
+    }
+  ]
+}

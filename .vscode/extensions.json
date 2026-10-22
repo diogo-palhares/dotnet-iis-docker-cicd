@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "ms-vscode.powershell",
+    "ms-azuretools.vscode-docker"
+  ]
+}

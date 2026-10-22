@@ -40,12 +40,21 @@ Spike of a customer management application plus the build, packaging and deploym
 
 ```powershell
 dotnet test                                        # 16 tests (web API + monitor)
-dotnet run --project src/CustomerSpike.Web         # web app, URL printed on start-up
-dotnet run --project src/CustomerSpike.StatusMonitor   # monitor (console mode)
+dotnet run --project src/CustomerSpike.Web         # web app, URL printed on start-up (http://localhost:5045)
+
+# in a second terminal: the monitor in console mode, pointed at the web app started above
+$env:StatusMonitor__Url = 'http://localhost:5045/health'; $env:StatusMonitor__IntervalSeconds = '10'
+dotnet run --project src/CustomerSpike.StatusMonitor
 ```
 
-The monitor reads `StatusMonitor:*` from its `appsettings.json` (URL, interval, log file name). Run from the IDE it
-writes `status.log` next to the executable and exits with code 1 as soon as the status is not 200.
+The monitor reads `StatusMonitor:*` from its `appsettings.json` (URL, interval, log file name); any key can be overridden
+with an environment variable as above. Its default URL is the IIS deployment (`http://localhost:8080/customers/health`),
+so without overriding it the monitor fails on the first probe when IIS is not set up. It writes `status.log` next to the
+executable and exits with code 1 as soon as the status is not 200 (stop the web app to see it).
+
+**IDE**: open the folder in VS Code (accept the recommended extensions) and press F5 on *1. Web app*, then on
+*2. Status monitor, console mode*; or open `CustomerSpike.sln` in Visual Studio 2022 and start the two projects.
+Requires the .NET 8 SDK (any 8.0.x).
 
 ## Full walkthrough on a Windows machine
 
