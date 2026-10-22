@@ -84,6 +84,21 @@ jobs:
           path: artifacts/*.zip
           if-no-files-found: error
 
+  lint-scripts:
+    name: Lint PowerShell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser
+          $results = Invoke-ScriptAnalyzer -Path scripts -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          $results | Format-Table ScriptName, Line, RuleName, Message -AutoSize -Wrap
+          if ($results) { throw "$(@($results).Count) PSScriptAnalyzer finding(s)." }
+
   docker:
     name: Docker image
     needs: build
@@ -120,7 +135,37 @@ jobs:
             type=semver,pattern={{version}}
             type=sha
 
+      - name: Build image for the smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: customer-spike-web:ci
+          build-args: VERSION=${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Proves the image really starts, that its HEALTHCHECK turns healthy and that the app answers.
+      - name: Smoke test the container
+        run: |
+          docker run -d --name smoke -p 8080:8080 customer-spike-web:ci
+          status=starting
+          for i in $(seq 1 40); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' smoke)
+            echo "health status: $status"
+            [ "$status" = "healthy" ] && break
+            sleep 2
+          done
+          if [ "$status" != "healthy" ]; then docker logs smoke; exit 1; fi
+          curl -fsS http://localhost:8080/health; echo
+          curl -fsS -o page.html http://localhost:8080/
+          grep -q "Customer Spike" page.html
+          curl -fsS -X POST http://localhost:8080/api/customers \
+            -H 'Content-Type: application/json' -d '{"fullName":"CI","email":"ci@example.com"}'; echo
+          docker rm -f smoke
+
       - name: Build and push
+        if: env.PUSH == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .

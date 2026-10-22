@@ -10,20 +10,25 @@ namespace CustomerSpike.StatusMonitor;
 public sealed class Worker : BackgroundService
 {
     private readonly StatusMonitorOptions _options;
+    private readonly IStatusProbe _probe;
+    private readonly IExitHandler _exitHandler;
     private readonly ILogger<Worker> _logger;
     private readonly string _logPath;
 
-    public Worker(IOptions<StatusMonitorOptions> options, ILogger<Worker> logger)
+    public Worker(IOptions<StatusMonitorOptions> options, IStatusProbe probe, IExitHandler exitHandler, ILogger<Worker> logger)
     {
         _options = options.Value;
+        _probe = probe;
+        _exitHandler = exitHandler;
         _logger = logger;
+
         // AppContext.BaseDirectory, not the working directory: a Windows service starts in System32.
-        _logPath = Path.Combine(AppContext.BaseDirectory, _options.LogFileName);
+        var directory = string.IsNullOrWhiteSpace(_options.LogDirectory) ? AppContext.BaseDirectory : _options.LogDirectory;
+        _logPath = Path.Combine(directory, _options.LogFileName);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var client = CreateClient();
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(_options.IntervalSeconds));
 
         _logger.LogInformation("Monitoring {Url} every {Interval}s, log file: {LogPath}",
@@ -32,53 +37,22 @@ public sealed class Worker : BackgroundService
         // Probe immediately, then once per interval.
         do
         {
-            var (code, message) = await ProbeAsync(client, stoppingToken);
-            await WriteLogAsync(code, message, stoppingToken);
+            var result = await _probe.ProbeAsync(stoppingToken);
+            await WriteLogAsync(result, stoppingToken);
 
-            if (code != (int)HttpStatusCode.OK)
+            if (result.Code != (int)HttpStatusCode.OK)
             {
-                _logger.LogError("Unexpected status {Code} ({Message}); stopping the service.", code, message);
-
-                // Terminating with a non-zero exit code makes the Service Control Manager treat this as a
-                // failure, so the recovery action configured at install time (restart after 300s) applies.
-                Environment.Exit(1);
+                _logger.LogError("Unexpected status {Code} ({Message}); stopping the service.", result.Code, result.Message);
+                _exitHandler.Exit(1);
+                return; // the real handler never returns; test doubles do
             }
         }
         while (await WaitForNextTickAsync(timer, stoppingToken));
     }
 
-    private HttpClient CreateClient()
+    private async Task WriteLogAsync(ProbeResult result, CancellationToken cancellationToken)
     {
-        var handler = new HttpClientHandler();
-        if (_options.AllowUntrustedCertificate)
-        {
-            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-        }
-
-        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds) };
-    }
-
-    private async Task<(int Code, string Message)> ProbeAsync(HttpClient client, CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await client.GetAsync(_options.Url, cancellationToken);
-            return ((int)response.StatusCode, response.ReasonPhrase ?? response.StatusCode.ToString());
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            // Connection refused, DNS failure, timeout...: no HTTP status exists, report 0.
-            return (0, $"Request failed: {ex.GetType().Name} - {ex.Message}");
-        }
-    }
-
-    private async Task WriteLogAsync(int code, string message, CancellationToken cancellationToken)
-    {
-        var line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} | {_options.Url} | {code} | {message}{Environment.NewLine}";
+        var line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} | {_options.Url} | {result.Code} | {result.Message}{Environment.NewLine}";
         await File.AppendAllTextAsync(_logPath, line, cancellationToken);
     }
 

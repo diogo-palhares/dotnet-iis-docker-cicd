@@ -1,6 +1,26 @@
 using System.Net.Mail;
 using CustomerSpike.Web;
 
+// Container HEALTHCHECK entry point: the aspnet base image has no curl/wget, so the app probes itself.
+if (args.Contains("--healthcheck"))
+{
+    var port = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS")?.Split(';')[0] ?? "8080";
+    using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+    try
+    {
+        using var response = await client.GetAsync($"http://localhost:{port}/health");
+        return response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch (HttpRequestException)
+    {
+        return 1;
+    }
+    catch (TaskCanceledException)
+    {
+        return 1;
+    }
+}
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<ICustomerStore, InMemoryCustomerStore>();
 
@@ -30,6 +50,7 @@ customers.MapPost("", (CreateCustomerRequest request, ICustomerStore store, Http
 });
 
 app.Run();
+return 0;
 
 static Dictionary<string, string[]> Validate(CreateCustomerRequest request)
 {

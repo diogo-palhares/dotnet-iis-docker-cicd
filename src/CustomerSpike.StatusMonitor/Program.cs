@@ -10,6 +10,8 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 
 builder.Services.AddWindowsService(options => options.ServiceName = "CustomerSpikeStatusMonitor");
 builder.Services.Configure<StatusMonitorOptions>(builder.Configuration.GetSection(StatusMonitorOptions.SectionName));
+builder.Services.AddSingleton<IStatusProbe, HttpStatusProbe>();
+builder.Services.AddSingleton<IExitHandler, ProcessExitHandler>();
 builder.Services.AddHostedService<Worker>();
 
 builder.Build().Run();

@@ -25,7 +25,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Remove-FolderWithRetry {
+    [CmdletBinding(SupportsShouldProcess)]
     param([string]$Path)
+
+    if (-not $PSCmdlet.ShouldProcess($Path, 'Remove folder')) { return }
+
     # A process (e.g. the IIS worker w3wp.exe) can take a moment to release its files after stopping.
     for ($attempt = 1; $attempt -le 20; $attempt++) {
         try {

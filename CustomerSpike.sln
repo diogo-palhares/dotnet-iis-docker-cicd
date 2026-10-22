@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{A78F7A44
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomerSpike.Web.Tests", "tests\CustomerSpike.Web.Tests\CustomerSpike.Web.Tests.csproj", "{FEB02111-AA81-4EC3-9758-2197DF684927}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomerSpike.StatusMonitor.Tests", "tests\CustomerSpike.StatusMonitor.Tests\CustomerSpike.StatusMonitor.Tests.csproj", "{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +36,15 @@ Global
 		{FEB02111-AA81-4EC3-9758-2197DF684927}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FEB02111-AA81-4EC3-9758-2197DF684927}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FEB02111-AA81-4EC3-9758-2197DF684927}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{6FF4A81D-C734-457A-B41C-D332026209ED} = {A87B5029-E04F-4D27-B700-6CC78F8BC719}
 		{D10D7908-9CC7-4550-A20B-00BD67BEC30E} = {A87B5029-E04F-4D27-B700-6CC78F8BC719}
 		{FEB02111-AA81-4EC3-9758-2197DF684927} = {A78F7A44-8AE1-4C08-887A-3C79A6687B1A}
+		{2C4833CE-2FB3-4CD4-80DB-DAF82B422C39} = {A78F7A44-8AE1-4C08-887A-3C79A6687B1A}
 	EndGlobalSection
 EndGlobal

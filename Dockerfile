@@ -22,4 +22,8 @@ COPY --from=build /app/publish .
 # The .NET 8 images listen on port 8080 and ship a non-root "app" user.
 EXPOSE 8080
 USER $APP_UID
+
+# No curl in the aspnet image: the app has a --healthcheck mode that probes its own /health endpoint.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=5s --retries=3 \
+    CMD ["dotnet", "CustomerSpike.Web.dll", "--healthcheck"]
 ENTRYPOINT ["dotnet", "CustomerSpike.Web.dll"]

@@ -7,6 +7,7 @@ Spike of a customer management application plus the build, packaging and deploym
 | `src/CustomerSpike.Web` | ASP.NET Core 8 minimal API + a single page (form + grid) to enter and list customers. Data is kept in memory (spike). |
 | `src/CustomerSpike.StatusMonitor` | .NET 8 Worker Service / Windows service that probes the site every 60 s and logs the HTTP status. |
 | `tests/CustomerSpike.Web.Tests` | xUnit integration tests (`WebApplicationFactory`). |
+| `tests/CustomerSpike.StatusMonitor.Tests` | xUnit tests of the monitor: logging, stop-on-failure with exit code 1, HTTP probe. |
 | `.github/workflows/ci.yml` | CI: format check, build, test, zip packages, Docker image. |
 | `scripts/` | PowerShell deployment scripts for IIS, the Windows service and Docker. |
 
@@ -36,7 +37,7 @@ Spike of a customer management application plus the build, packaging and deploym
 ## Run it locally (IDE or CLI)
 
 ```powershell
-dotnet test                                        # 7 tests
+dotnet test                                        # 16 tests (web API + monitor)
 dotnet run --project src/CustomerSpike.Web         # web app, URL printed on start-up
 dotnet run --project src/CustomerSpike.StatusMonitor   # monitor (console mode)
 ```
@@ -60,7 +61,7 @@ $cred = Get-Credential svc-customerspike          # local account; created if it
 
 # 3. Windows service: auto-start, runs as the same account, restarts 300 s after a failure
 .\scripts\Install-StatusMonitorService.ps1 -PackagePath .\publish\monitor -Credential $cred
-Get-Content C:\Services\CustomerSpikeStatusMonitor\status.log -Wait
+Get-Content C:\Services\CustomerSpikeStatusMonitor\status.log -Wait -Encoding UTF8
 
 # 4. Docker (optional)
 .\scripts\Deploy-Docker.ps1            # pulls the image published by CI and runs it on http://localhost:8081
@@ -86,9 +87,11 @@ Get-Content C:\Services\CustomerSpikeStatusMonitor\status.log -Wait
 - **build** job: restore (cached NuGet) -> `dotnet format --verify-no-changes` -> build with warnings as errors ->
   tests (TRX uploaded) -> `dotnet publish` -> `CustomerSpike.Web-<version>.zip` and
   `CustomerSpike.StatusMonitor-<version>.zip` uploaded as the `packages-<version>` artifact.
-- **docker** job: builds the multi-stage `Dockerfile`; on `main` / tags pushes
+- **lint-scripts** job: PSScriptAnalyzer over `scripts/` (rules in `PSScriptAnalyzerSettings.psd1`).
+- **docker** job: builds the multi-stage `Dockerfile`, **starts the container** and waits for its `HEALTHCHECK` to turn
+  healthy before calling the API; on `main` / tags it then pushes
   `ghcr.io/<owner>/<repo>/web:<version>`, `:latest` and `:sha-<commit>` using the built-in `GITHUB_TOKEN` (no secrets to manage).
-  On pull requests the image is built but not pushed.
+  On pull requests the image is built and smoke-tested but not pushed.
 - Version = `1.0.<run number>`, stamped into the assemblies and the image labels.
 
 Best practices applied: `concurrency` cancels superseded runs, least-privilege `permissions` (write only where needed),
@@ -118,4 +121,5 @@ non-root container user, `.gitignore` / `.dockerignore` / `.gitattributes`.
 - Customers are stored in memory and lost on restart; no authentication, no persistent database.
 - Only one monitored URL; no alerting besides the log file and the service state.
 - Scripts target a single local machine (no remoting / inventory).
-- The container has no `HEALTHCHECK` (the aspnet base image has no curl); orchestrators should probe `/health`.
+- No image vulnerability scan yet (Trivy / Defender for Cloud would be the next step), and actions are pinned by major
+  version rather than by commit SHA.
